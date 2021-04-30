@@ -29,9 +29,7 @@ function _nativeTypeToAttributeMetadataType(nativeType: any) {
     return AttributeMetadata.Type.Boolean;
   } else if (nativeType === Array) {
     return AttributeMetadata.Type.Array;
-  } else if (nativeType === Object) {
-    return AttributeMetadata.Type.Map;
   } else {
-    throw new Error(`Unsupported type ${nativeType}`);
+    return AttributeMetadata.Type.Map;
   }
 }
