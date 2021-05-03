@@ -14,19 +14,9 @@
     "prepublishOnly": "npm run build",
     "lint": "tslint -c tslint.json 'src/**/*.ts'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/balmbees/dynamo-types.git"
-  },
   "engines": {
     "node": ">=8.10.0"
   },
-  "author": "Kurt Lee",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/balmbees/dynamo-types/issues"
-  },
-  "homepage": "https://github.com/balmbees/dynamo-types#readme",
   "devDependencies": {
     "@types/chai": "4.2.16",
     "@types/faker": "4.1.12",
@@ -51,20 +41,5 @@
     "aws-xray-sdk-core": "^2.3.6",
     "lodash": "^4.17.15",
     "reflect-metadata": "^0.1.13"
-  },
-  "config": {
-    "commitizen": {
-      "path": "cz-conventional-changelog"
-    }
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
-    }
-  },
-  "commitlint": {
-    "extends": [
-      "@vingle/commitlint-preset"
-    ]
   }
 }
