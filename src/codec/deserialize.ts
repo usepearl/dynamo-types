@@ -1,20 +1,24 @@
 import { DynamoDB } from "aws-sdk";
 import * as _ from "lodash";
-import {
-  Attribute as AttributeMetadata,
-  Table as TableMetadata,
-} from "../metadata";
 import { ITable, Table } from "../table";
 
-import * as AttributeValue from "./attribute_value";
 
 export function deserialize<T extends Table>(
   tableClass: ITable<T>,
   dynamoAttributes: DynamoDB.DocumentClient.AttributeMap,
+  filterKeys?: string[]
 ): T {
   const record = new tableClass();
 
-  tableClass.metadata.attributes.forEach((attributeMetadata) => {
+  tableClass.metadata.attributes
+  .filter((attributeMetadata) => {
+    if (!filterKeys) {
+      return true;
+    }
+
+    return filterKeys.includes(attributeMetadata.name);
+  })
+  .forEach((attributeMetadata) => {
     const attributeValue = dynamoAttributes[attributeMetadata.name];
     if (!dynamoAttributes.hasOwnProperty(attributeMetadata.name)) {
       // attribute is defined but not provided by DynamoDB

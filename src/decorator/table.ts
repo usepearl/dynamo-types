@@ -4,12 +4,22 @@ import { ITable, Table as TableClass } from "../table";
 
 import Config from "../config";
 import { Connection } from "../connections";
+import { UniqueKey } from "../metadata/unique_key";
 
 // Table Decorator
-export function Table(options: { name?: string, connection?: Connection } = {}) {
+export function Table(options: { name?: string, connection?: Connection, uniqueKeys?: UniqueKey[] } = {}) {
   return (target: ITable<any>) => {
     target.metadata.connection = options.connection || Config.defaultConnection;
     target.metadata.name = options.name || target.name;
+    target.metadata.uniqueKeys = options.uniqueKeys || [];
+    target.metadata.uniqueKeyFieldList = [];
+    target.metadata.uniqueKeys.forEach((key) => {
+      key.keys.forEach((keyField) => {
+        if (!target.metadata.uniqueKeyFieldList.includes(keyField)) {
+          target.metadata.uniqueKeyFieldList.push(keyField);
+        }
+      });
+    });
 
     // Table Decorator Executed at last,
     // So Validate metadata, presume all the setups are finisehd
@@ -18,7 +28,8 @@ export function Table(options: { name?: string, connection?: Connection } = {}) 
     // After validation, setup some methods.
     defineAttributeProperties(target);
     definePrimaryKeyProperty(target);
-
+    defineUniqueKeys(target);
+    
     defineGlobalSecondaryIndexes(target);
     defineLocalSecondaryIndexes(target);
   };
@@ -41,6 +52,25 @@ function defineAttributeProperties(table: ITable<any>) {
       },
     );
   });
+}
+
+function defineUniqueKeys(table: ITable<any>) {
+  table.metadata.uniqueKeys.forEach((key) => {
+    Object.defineProperty(
+      table.prototype,
+      key.name,
+      {
+        configurable: true,
+        enumerable: true,
+        get(this: TableClass) {
+          return this.getAttribute(key.name)
+        },
+        set(this: TableClass, v) {
+          this.setAttribute(key.name, v)
+        }
+      }
+    )
+  })
 }
 
 function defineGlobalSecondaryIndexes(table: ITable<any>) {

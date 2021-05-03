@@ -2,6 +2,7 @@ import * as Attribute from "./attribute";
 import * as Indexes from "./indexes";
 
 import * as Connection from "../connections";
+import { UniqueKey } from "./unique_key";
 
 // Table consists of
 // - Attributes
@@ -21,6 +22,8 @@ export interface Metadata {
     Indexes.FullPrimaryKeyMetadata
    | Indexes.HashPrimaryKeyMetadata
   );
+  uniqueKeys: UniqueKey[];
+  uniqueKeyFieldList: string[];
 }
 
 export function createMetadata() {

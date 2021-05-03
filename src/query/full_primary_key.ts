@@ -9,8 +9,9 @@ import * as Query from "./query";
 import { batchGetFull, batchGetTrim } from "./batch_get";
 import { batchWrite } from "./batch_write";
 import { Conditions } from "./expressions/conditions";
-import { buildCondition, buildUpdate } from "./expressions/transformers";
+import { buildCondition, buildUniqueKeyUpdates, buildUpdate } from "./expressions/transformers";
 import { UpdateChanges } from "./expressions/update";
+import { deleteItem } from "./delete";
 
 const HASH_KEY_REF = "#hk";
 const HASH_VALUE_REF = ":hkv";
@@ -30,15 +31,10 @@ export class FullPrimaryKey<T extends Table, HashKeyType, RangeKeyType> {
       condition: Conditions<T> | Array<Conditions<T>>;
     }> = {},
   ) {
-    const res = await this.tableClass.metadata.connection.documentClient.delete({
-      TableName: this.tableClass.metadata.name,
-      // ReturnValues: "ALL_OLD",
-      Key: {
-        [this.metadata.hash.name]: hashKey,
-        [this.metadata.range.name]: sortKey,
-      },
-      ...buildCondition(this.tableClass.metadata, options.condition),
-    }).promise();
+    return deleteItem(this.tableClass, {
+      [this.metadata.hash.name]: hashKey,
+      [this.metadata.range.name]: sortKey,
+    }, options);
   }
 
   /**
@@ -106,6 +102,14 @@ export class FullPrimaryKey<T extends Table, HashKeyType, RangeKeyType> {
   }
 
   public async batchDelete(keys: Array<[HashKeyType, RangeKeyType]>) {
+    const hasUniqueKeys = this.tableClass.metadata.uniqueKeys.length > 0;
+    if (hasUniqueKeys) {
+      for (const key of keys) {
+        await deleteItem(this.tableClass, key);
+      }
+      return;
+    } 
+
     return await batchWrite(
       this.tableClass.metadata.connection.documentClient,
       this.tableClass.metadata.name,
@@ -209,18 +213,30 @@ export class FullPrimaryKey<T extends Table, HashKeyType, RangeKeyType> {
   ): Promise<void> {
     const update = buildUpdate(this.tableClass.metadata, changes);
     const condition = buildCondition(this.tableClass.metadata, options.condition);
-
-    const dynamoRecord =
-      await this.tableClass.metadata.connection.documentClient.update({
-        TableName: this.tableClass.metadata.name,
-        Key: {
-          [this.metadata.hash.name]: hashKey,
-          [this.metadata.range.name]: sortKey,
+    const updateInput = {
+      TableName: this.tableClass.metadata.name,
+      Key: {
+        [this.metadata.hash.name]: hashKey,
+        [this.metadata.range.name]: sortKey,
+      },
+      UpdateExpression: update.UpdateExpression,
+      ConditionExpression: condition.ConditionExpression,
+      ExpressionAttributeNames: { ...update.ExpressionAttributeNames, ...condition.ExpressionAttributeNames },
+      ExpressionAttributeValues: { ...update.ExpressionAttributeValues, ...condition.ExpressionAttributeValues },
+    };
+    if (this.tableClass.metadata.uniqueKeys.length === 0) {
+      await this.tableClass.metadata.connection.documentClient.update(updateInput).promise();
+    } else {
+      const updates = await buildUniqueKeyUpdates(this.tableClass, changes, {
+        [this.metadata.hash.name]: hashKey,
+        [this.metadata.range.name]: sortKey,
+      });
+      await this.tableClass.metadata.connection.documentClient.transactWrite({
+        TransactItems: [{
+          Update: updateInput
         },
-        UpdateExpression: update.UpdateExpression,
-        ConditionExpression: condition.ConditionExpression,
-        ExpressionAttributeNames: { ...update.ExpressionAttributeNames, ...condition.ExpressionAttributeNames },
-        ExpressionAttributeValues: { ...update.ExpressionAttributeValues, ...condition.ExpressionAttributeValues },
-      }).promise();
+        ...updates]
+      })
+    }
   }
 }

@@ -10,10 +10,10 @@
         "experimentalDecorators": true,
         "strictNullChecks": true
     },
-    "exclude": [
-        "**/__test__/"
-    ],
+    // "exclude": [
+    //     "**/__test__/"
+    // ],
     "include": [
-        "src/**/*"
+        "src/**/*",
     ]
 }

@@ -6,9 +6,10 @@ import { ITable, Table } from "../table";
 
 import { batchGetFull, batchGetTrim } from "./batch_get";
 import { batchWrite } from "./batch_write";
+import { deleteItem } from "./delete";
 
 import { Conditions } from "./expressions/conditions";
-import { buildCondition, buildUpdate } from "./expressions/transformers";
+import { buildCondition, buildUniqueKeyUpdates, buildUpdate } from "./expressions/transformers";
 import { UpdateChanges } from "./expressions/update";
 
 export class HashPrimaryKey<T extends Table, HashKeyType> {
@@ -23,13 +24,10 @@ export class HashPrimaryKey<T extends Table, HashKeyType> {
       condition: Conditions<T> | Array<Conditions<T>>;
     }> = {},
   ) {
-    const res = await this.tableClass.metadata.connection.documentClient.delete({
-      TableName: this.tableClass.metadata.name,
-      Key: {
-        [this.metadata.hash.name]: hashKey,
-      },
-      ...buildCondition(this.tableClass.metadata, options.condition),
-    }).promise();
+
+    return deleteItem(this.tableClass, {
+      [this.metadata.hash.name]: hashKey,
+    }, options);
   }
 
   public async get(hashKey: HashKeyType, options: { consistent: boolean } = { consistent: false }): Promise<T | null> {
@@ -113,6 +111,14 @@ export class HashPrimaryKey<T extends Table, HashKeyType> {
   }
 
   public async batchDelete(keys: HashKeyType[]) {
+    const hasUniqueKeys = this.tableClass.metadata.uniqueKeys.length > 0;
+    if (hasUniqueKeys) {
+      for (const key of keys) {
+        await deleteItem(this.tableClass, key);
+      }
+      return;
+    } 
+
     return await batchWrite(
       this.tableClass.metadata.connection.documentClient,
       this.tableClass.metadata.name,
@@ -128,8 +134,6 @@ export class HashPrimaryKey<T extends Table, HashKeyType> {
     );
   }
 
-  // Let'just don't use Scan if it's possible
-  // async scan()
   public async update(
     hashKey: HashKeyType,
     changes: Partial<UpdateChanges<T>>,
@@ -139,17 +143,29 @@ export class HashPrimaryKey<T extends Table, HashKeyType> {
   ): Promise<void> {
     const update = buildUpdate(this.tableClass.metadata, changes);
     const condition = buildCondition(this.tableClass.metadata, options.condition);
+    const updateInput = {
+      TableName: this.tableClass.metadata.name,
+      Key: {
+        [this.metadata.hash.name]: hashKey,
+      },
+      UpdateExpression: update.UpdateExpression,
+      ConditionExpression: condition.ConditionExpression,
+      ExpressionAttributeNames: { ...update.ExpressionAttributeNames, ...condition.ExpressionAttributeNames },
+      ExpressionAttributeValues: { ...update.ExpressionAttributeValues, ...condition.ExpressionAttributeValues },
+    };
 
-    const dynamoRecord =
-      await this.tableClass.metadata.connection.documentClient.update({
-        TableName: this.tableClass.metadata.name,
-        Key: {
-          [this.metadata.hash.name]: hashKey,
+    if (this.tableClass.metadata.uniqueKeys.length === 0) {
+      await this.tableClass.metadata.connection.documentClient.update(updateInput).promise();
+    } else {
+      const updates = await buildUniqueKeyUpdates(this.tableClass, changes, {
+        [this.metadata.hash.name]: hashKey,
+      });
+      await this.tableClass.metadata.connection.documentClient.transactWrite({
+        TransactItems: [{
+          Update: updateInput
         },
-        UpdateExpression: update.UpdateExpression,
-        ConditionExpression: condition.ConditionExpression,
-        ExpressionAttributeNames: { ...update.ExpressionAttributeNames, ...condition.ExpressionAttributeNames },
-        ExpressionAttributeValues: { ...update.ExpressionAttributeValues, ...condition.ExpressionAttributeValues },
+        ...updates]
       }).promise();
+    }
   }
 }

@@ -19,3 +19,21 @@ export function serialize<T extends Table>(tableClass: ITable<T>, record: T): { 
 
   return res;
 }
+
+export function serializeUniqueKeyset<T extends Table>(tableClass: ITable<T>, record: T, uniqueKeys: string[]): string {
+  const values: { [key: string]: string } = {};
+
+  tableClass.metadata.attributes
+  .filter((attributeMetadata) => {
+    return uniqueKeys.includes(attributeMetadata.name)
+  })
+  .forEach((attributeMetadata) => {
+    const attr = record.getAttribute(attributeMetadata.name);
+    if (attr !== undefined) {
+      values[attributeMetadata.name] = attr.toString();
+    }
+  });
+
+  return Object.values(values).join("_");
+}
+
