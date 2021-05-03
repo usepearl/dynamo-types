@@ -1,0 +1,1 @@
+{"version":3,"file":"drop_table.js","sourceRoot":"","sources":["../../../src/query/table_operations/drop_table.ts"],"names":[],"mappings":";;;AAIO,KAAK,UAAU,SAAS,CAAC,QAAiC;IAC/D,MAAM,GAAG,GAAG,MAAM,QAAQ,CAAC,UAAU,CAAC,MAAM,CAAC,WAAW,CAAC,EAAE,SAAS,EAAE,QAAQ,CAAC,IAAI,EAAE,CAAC,CAAC,OAAO,EAAE,CAAC;IACjG,OAAO,GAAG,CAAC,gBAAgB,CAAC;AAC9B,CAAC;AAHD,8BAGC"}

@@ -1,0 +1,13 @@
+import { Operator } from "./operator";
+export declare function Equal<T>(value: T): Operator<T>;
+export declare function NotEqual<T>(value: T): Operator<T>;
+export declare function LessThan<T>(value: T): Operator<T>;
+export declare function LessThanOrEqual<T>(value: T): Operator<T>;
+export declare function GreaterThan<T>(value: T): Operator<T>;
+export declare function GreaterThanOrEqual<T>(value: T): Operator<T>;
+export declare function Between<T>(from: T, to: T): Operator<any>;
+export declare function In<T>(value: T[]): Operator<any>;
+export declare function AttributeExists(): Operator<any>;
+export declare function AttributeNotExists(): Operator<any>;
+export declare function BeginsWith<T>(value: T): Operator<T>;
+export declare function Contains<T>(value: T): Operator<T>;

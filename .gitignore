@@ -1,5 +1,6 @@
-dst
-dst.zip
+# dst
+# dst.zip
+dst/**/__test__
 
 .env
 
