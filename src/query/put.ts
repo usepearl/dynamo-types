@@ -1,6 +1,6 @@
 import { ITable, Table } from "../table";
 import * as Codec from '../codec';
-import { AttributeNotExists, Conditions } from "./expressions/conditions";
+import { Conditions } from "./expressions/conditions";
 import { buildCondition } from "./expressions/transformers";
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
 import { batchWrite } from "./batch_write";
@@ -35,7 +35,7 @@ export const convertToUniquePutInputs = <T extends Table>(
       return {
         TableName: key.keyTableName ?? tableClass.metadata.name,
         Item: item,
-        ...buildCondition(tableClass.metadata, [{ [key.primaryKeyName]: AttributeNotExists() }])
+        ConditionExpression: `attribute_not_exists(${key.primaryKeyName})`
       };
     });
 

@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batchPut = exports.put = exports.convertToUniquePutInputs = void 0;
 const Codec = require("../codec");
-const conditions_1 = require("./expressions/conditions");
 const transformers_1 = require("./expressions/transformers");
 const batch_write_1 = require("./batch_write");
 exports.convertToUniquePutInputs = (tableClass, record, filterKey) => {
@@ -27,7 +26,11 @@ exports.convertToUniquePutInputs = (tableClass, record, filterKey) => {
             } : {
                 [key.primaryKeyName]: keyValue
             };
-            return Object.assign({ TableName: (_a = key.keyTableName) !== null && _a !== void 0 ? _a : tableClass.metadata.name, Item: item }, transformers_1.buildCondition(tableClass.metadata, [{ [key.primaryKeyName]: conditions_1.AttributeNotExists() }]));
+            return {
+                TableName: (_a = key.keyTableName) !== null && _a !== void 0 ? _a : tableClass.metadata.name,
+                Item: item,
+                ConditionExpression: `attribute_not_exists(${key.primaryKeyName})`
+            };
         });
         return keyInputs;
     }
