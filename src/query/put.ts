@@ -24,7 +24,7 @@ export const convertToUniquePutInputs = <T extends Table>(
       return key === filterKey;
     })
     .map((key): DocumentClient.PutItemInput => {
-      const keyValue = `${key.name.toUpperCase()}#${Codec.serializeUniqueKeyset(tableClass, record, key.keys)}`;
+      const keyValue = `${tableClass.metadata.className}_${key.name.toUpperCase()}#${Codec.serializeUniqueKeyset(tableClass, record, key.keys)}`;
       const item = key.sortKeyName ? {
         [key.primaryKeyName]: keyValue,
         [key.sortKeyName]: keyValue
@@ -56,22 +56,27 @@ export async function put<T extends Table>(
     ...buildCondition(tableClass.metadata, options.condition),
   };
 
-  const inputs = convertToUniquePutInputs(tableClass, record);
-  if (inputs.length === 0) {
-    const res = await tableClass.metadata.connection.documentClient.put(recordInput).promise();
-    record.setAttributes(res.Attributes || {});
-    return record;
-  } else {
+  const relationshipInputs = tableClass.metadata.relationshipKeys
+    .filter(relation => record.getAttribute(relation.hash.name) !== undefined)
+    .map(relation => {
+      return {
+        Item: Codec.serialize(tableClass, record, record.getAttribute(relation.hash.name)),
+        TableName: relation.relationTableName!,
+        ...buildCondition(tableClass.metadata, options.condition),
+      }
+    })
+
+    const inputs = convertToUniquePutInputs(tableClass, record);  
+
     await tableClass.metadata.connection.documentClient.transactWrite({
-      TransactItems: [recordInput, ...inputs].map((params) => {
+      TransactItems: [recordInput, ...relationshipInputs, ...inputs].map((params) => {
         return {
           Put: params
         }
       })
     }).promise();
-    
+
     return record;
-  }
 }
 
 export async function batchPut<T extends Table>(
@@ -79,7 +84,7 @@ export async function batchPut<T extends Table>(
   records: T[]
 ) {
   const hasUniqueKeys = tableClass.metadata.uniqueKeys.length > 0;
-  if (hasUniqueKeys) {
+  if (hasUniqueKeys || tableClass.metadata.relationshipKeys.length > 0) {
     for(const record of records) {
       await put(tableClass, record);
     }

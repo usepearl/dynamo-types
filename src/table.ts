@@ -72,7 +72,12 @@ export class Table {
   }
 }
 
+
+
 export interface ITable<T extends Table> {
   metadata: Metadata.Table.Metadata;
   new(): T;
 }
+
+
+

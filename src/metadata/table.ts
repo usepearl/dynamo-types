@@ -8,8 +8,17 @@ import { UniqueKey } from "./unique_key";
 // - Attributes
 // - Indexes
 
+export const isFullKey = (key: Indexes.FullPrimaryKeyMetadata | Indexes.HashPrimaryKeyMetadata | Indexes.SingleTableKeyMetadata): key is Indexes.FullPrimaryKeyMetadata => {
+  return (key as Indexes.FullPrimaryKeyMetadata).range !== undefined
+}
+
+export const isSingleTableKey = (key: Indexes.FullPrimaryKeyMetadata | Indexes.HashPrimaryKeyMetadata | Indexes.SingleTableKeyMetadata): key is Indexes.SingleTableKeyMetadata => {
+  return (key as Indexes.SingleTableKeyMetadata).classKeys !== undefined
+}
+
 export interface Metadata {
   name: string; // name of the table on DynamoDB
+  className: string;
   attributes: Attribute.Metadata[]; // List of attributes this table has
   connection: Connection.Connection; // DynamoDB Database Connection
   globalSecondaryIndexes: Array<
@@ -21,7 +30,9 @@ export interface Metadata {
   primaryKey: (
     Indexes.FullPrimaryKeyMetadata
    | Indexes.HashPrimaryKeyMetadata
+   | Indexes.SingleTableKeyMetadata
   );
+  relationshipKeys: Indexes.RelationshipKeyMetadata[]
   uniqueKeys: UniqueKey[];
   uniqueKeyFieldList: string[];
 }
@@ -32,6 +43,7 @@ export function createMetadata() {
     attributes: [],
     globalSecondaryIndexes: [],
     localSecondaryIndexes: [],
+    relationshipKeys: []
   } as any as Metadata;
 }
 
@@ -45,6 +57,20 @@ export function validateMetadata(metadata: Metadata) {
   if (!metadata.connection) {
     throw new Error("Table must have DynamoDB Connection");
   }
+
+  if (isSingleTableKey(metadata.primaryKey)) {
+    metadata.uniqueKeys.forEach((key) => key.sortKeyName = 'classKey')
+
+    // Add classname to attributes
+    metadata.attributes.forEach((attribute) => {
+      if (metadata.primaryKey.hash.name === attribute.name) {
+        return
+      }
+
+      attribute.name = `${metadata.className}_${attribute.name}`
+    })
+  }
+  
 
   // TTL
   const ttlAttributes = metadata.attributes.filter((attribute) => attribute.timeToLive);

@@ -14,6 +14,9 @@ var full_primary_key_1 = require("./full_primary_key");
 Object.defineProperty(exports, "FullPrimaryKey", { enumerable: true, get: function () { return full_primary_key_1.FullPrimaryKey; } });
 var hash_primary_key_1 = require("./hash_primary_key");
 Object.defineProperty(exports, "HashPrimaryKey", { enumerable: true, get: function () { return hash_primary_key_1.HashPrimaryKey; } });
+var single_table_key_1 = require("./single_table_key");
+Object.defineProperty(exports, "SingleTableKey", { enumerable: true, get: function () { return single_table_key_1.SingleTableKey; } });
+Object.defineProperty(exports, "SingleTableRelation", { enumerable: true, get: function () { return single_table_key_1.SingleTableRelation; } });
 // Helpers
 var writer_1 = require("./writer");
 Object.defineProperty(exports, "Writer", { enumerable: true, get: function () { return writer_1.Writer; } });

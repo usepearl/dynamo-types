@@ -6,4 +6,5 @@ import * as Decorator from "./decorator";
 import * as Metadata from "./metadata";
 import * as Query from "./query";
 import { Table } from "./table";
-export { Query, Config, Codec, Decorator, Metadata, Connection, Table, };
+import { SingleTable, SingleMetaTable } from './single_table';
+export { Query, Config, Codec, Decorator, Metadata, Connection, Table, SingleTable, SingleMetaTable };

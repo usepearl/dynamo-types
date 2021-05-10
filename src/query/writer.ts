@@ -6,6 +6,7 @@ import * as Metadata from "../metadata";
 import { Conditions } from "./expressions/conditions";
 import { batchPut, put } from "./put";
 import { deleteItem } from "./delete";
+import { serializeClassKeys } from "../codec/serialize";
 
 export class Writer<T extends Table> {
   constructor(private tableClass: ITable<T>) {
@@ -36,16 +37,22 @@ export class Writer<T extends Table> {
 
 function KeyFromRecord<T extends Table>(
   record: T,
-  metadata: Metadata.Indexes.FullPrimaryKeyMetadata | Metadata.Indexes.HashPrimaryKeyMetadata,
+  metadata: Metadata.Indexes.FullPrimaryKeyMetadata | Metadata.Indexes.HashPrimaryKeyMetadata | Metadata.Indexes.SingleTableKeyMetadata,
 ) {
   if (metadata.type === "HASH") {
     return {
       [metadata.hash.name]: record.getAttribute(metadata.hash.name),
     };
-  } else {
+  } else if (metadata.type === "FULL") {
     return {
       [metadata.hash.name]: record.getAttribute(metadata.hash.name),
       [metadata.range.name]: record.getAttribute(metadata.range.name),
     };
+  } else {
+    const classKey = serializeClassKeys(this.tableClass, record.serialize(), false);
+    return {
+      [metadata.hash.name]: record.getAttribute(metadata.hash.name),
+      classKey
+    }
   }
 }

@@ -7,7 +7,7 @@ import * as Decorator from "./decorator";
 import * as Metadata from "./metadata";
 import * as Query from "./query";
 import { Table } from "./table";
-
+import { SingleTable, SingleMetaTable } from './single_table';
 export {
   Query,
   Config,
@@ -16,4 +16,6 @@ export {
   Metadata,
   Connection,
   Table,
+  SingleTable,
+  SingleMetaTable
 };

@@ -5,18 +5,32 @@ import { ITable, Table as TableClass } from "../table";
 import Config from "../config";
 import { Connection } from "../connections";
 import { UniqueKey } from "../metadata/unique_key";
+import { isFullKey, isSingleTableKey } from "../metadata/table";
 
 // Table Decorator
-export function Table(options: { name?: string, connection?: Connection, uniqueKeys?: UniqueKey[] } = {}) {
+export function Table(options: { tableName: string, connection?: Connection, uniqueKeys?: UniqueKey[], className?: string }) {
   return (target: ITable<any>) => {
     target.metadata.connection = options.connection || Config.defaultConnection;
-    target.metadata.name = options.name || target.name;
+    target.metadata.className = options.className || target.name;
+
+    target.metadata.name = options.tableName;
     target.metadata.uniqueKeys = options.uniqueKeys || [];
     target.metadata.uniqueKeyFieldList = [];
     target.metadata.uniqueKeys.forEach((key) => {
       key.keys.forEach((keyField) => {
-        if (!target.metadata.uniqueKeyFieldList.includes(keyField)) {
-          target.metadata.uniqueKeyFieldList.push(keyField);
+        const attr = target.metadata.attributes.find((attr) => attr.propertyName === keyField)!
+
+        let realKey = `${target.metadata.className}_${attr.name}`;
+        if (target.metadata.primaryKey.hash.name === attr.name) {
+          realKey = attr.name;
+        }
+
+        if (isFullKey(target.metadata.primaryKey) && target.metadata.primaryKey.range.name === attr.name) {
+          realKey = attr.name;
+        }
+
+        if (!target.metadata.uniqueKeyFieldList.includes(realKey)) {
+          target.metadata.uniqueKeyFieldList.push(realKey);
         }
       });
     });
@@ -73,6 +87,7 @@ function defineUniqueKeys(table: ITable<any>) {
   })
 }
 
+
 function defineGlobalSecondaryIndexes(table: ITable<any>) {
   table.metadata.globalSecondaryIndexes.forEach((metadata) => {
     if (metadata.type === "HASH") {
@@ -122,12 +137,21 @@ function definePrimaryKeyProperty(table: ITable<any>) {
           writable: false,
         },
       );
-    } else {
+    } else if (pkMetdata.type === "HASH") {
       Object.defineProperty(
         table,
         pkMetdata.name,
         {
           value: new Query.HashPrimaryKey(table, pkMetdata),
+          writable: false,
+        },
+      );
+    } else {
+      Object.defineProperty(
+        table,
+        pkMetdata.name,
+        {
+          value: new Query.SingleTableKey(table, pkMetdata),
           writable: false,
         },
       );

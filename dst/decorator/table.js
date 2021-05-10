@@ -4,17 +4,27 @@ exports.Table = void 0;
 const Metadata = require("../metadata");
 const Query = require("../query");
 const config_1 = require("../config");
+const table_1 = require("../metadata/table");
 // Table Decorator
-function Table(options = {}) {
+function Table(options) {
     return (target) => {
         target.metadata.connection = options.connection || config_1.default.defaultConnection;
-        target.metadata.name = options.name || target.name;
+        target.metadata.className = options.className || target.name;
+        target.metadata.name = options.tableName;
         target.metadata.uniqueKeys = options.uniqueKeys || [];
         target.metadata.uniqueKeyFieldList = [];
         target.metadata.uniqueKeys.forEach((key) => {
             key.keys.forEach((keyField) => {
-                if (!target.metadata.uniqueKeyFieldList.includes(keyField)) {
-                    target.metadata.uniqueKeyFieldList.push(keyField);
+                const attr = target.metadata.attributes.find((attr) => attr.propertyName === keyField);
+                let realKey = `${target.metadata.className}_${attr.name}`;
+                if (target.metadata.primaryKey.hash.name === attr.name) {
+                    realKey = attr.name;
+                }
+                if (table_1.isFullKey(target.metadata.primaryKey) && target.metadata.primaryKey.range.name === attr.name) {
+                    realKey = attr.name;
+                }
+                if (!target.metadata.uniqueKeyFieldList.includes(realKey)) {
+                    target.metadata.uniqueKeyFieldList.push(realKey);
                 }
             });
         });
@@ -91,9 +101,15 @@ function definePrimaryKeyProperty(table) {
                 writable: false,
             });
         }
-        else {
+        else if (pkMetdata.type === "HASH") {
             Object.defineProperty(table, pkMetdata.name, {
                 value: new Query.HashPrimaryKey(table, pkMetdata),
+                writable: false,
+            });
+        }
+        else {
+            Object.defineProperty(table, pkMetdata.name, {
+                value: new Query.SingleTableKey(table, pkMetdata),
                 writable: false,
             });
         }

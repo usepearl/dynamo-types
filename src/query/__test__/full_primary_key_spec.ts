@@ -18,7 +18,7 @@ import * as Query from "../index";
 
 describe("FullPrimaryKey", () => {
 
-  @TableDecorator({ name: "prod-Card2" })
+  @TableDecorator({ tableName: "prod-Card2" })
   class Card extends Table {
     @FullPrimaryKeyDecorator("id", "title")
     public static readonly primaryKey: Query.FullPrimaryKey<Card, number, string>;

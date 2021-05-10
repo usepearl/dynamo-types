@@ -14,7 +14,7 @@ import { Writer } from "../writer";
 import { Table } from "../../table";
 import { AttributeNotExists, GreaterThan } from "../index";
 
-@TableDecorator({ name: "prod-Card4" })
+@TableDecorator({ tableName: "prod-Card4" })
 class Card extends Table {
   @FullPrimaryKeyDecorator("i", "t")
   public static readonly primaryKey: Query.FullPrimaryKey<Card, number, string>;

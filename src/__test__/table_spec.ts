@@ -8,7 +8,7 @@ import {
 import { toJS } from "./helper";
 
 describe("Table", () => {
-  @Decorator.Table({ name: `prod-Card${Math.random()}` })
+  @Decorator.Table({ tableName: `prod-Card${Math.random()}` })
   class Card extends Table {
     @Decorator.FullPrimaryKey("id", "title")
     public static readonly primaryKey: Query.FullPrimaryKey<Card, number, string>;

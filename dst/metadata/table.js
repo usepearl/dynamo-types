@@ -1,12 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validateMetadata = exports.createMetadata = void 0;
+exports.validateMetadata = exports.createMetadata = exports.isSingleTableKey = exports.isFullKey = void 0;
+// Table consists of
+// - Attributes
+// - Indexes
+exports.isFullKey = (key) => {
+    return key.range !== undefined;
+};
+exports.isSingleTableKey = (key) => {
+    return key.classKeys !== undefined;
+};
 function createMetadata() {
     return {
         name: "",
         attributes: [],
         globalSecondaryIndexes: [],
         localSecondaryIndexes: [],
+        relationshipKeys: []
     };
 }
 exports.createMetadata = createMetadata;
@@ -19,6 +29,16 @@ function validateMetadata(metadata) {
     }
     if (!metadata.connection) {
         throw new Error("Table must have DynamoDB Connection");
+    }
+    if (exports.isSingleTableKey(metadata.primaryKey)) {
+        metadata.uniqueKeys.forEach((key) => key.sortKeyName = 'classKey');
+        // Add classname to attributes
+        metadata.attributes.forEach((attribute) => {
+            if (metadata.primaryKey.hash.name === attribute.name) {
+                return;
+            }
+            attribute.name = `${metadata.className}_${attribute.name}`;
+        });
     }
     // TTL
     const ttlAttributes = metadata.attributes.filter((attribute) => attribute.timeToLive);

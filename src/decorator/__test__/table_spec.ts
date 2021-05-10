@@ -9,7 +9,7 @@ import * as Query from "../../query";
 
 import { Table } from "../../table";
 
-@TableDecorator({ name: "prod-Card1" })
+@TableDecorator({ tableName: "prod-Card1" })
 class Card extends Table {
   @FullPrimaryKeyDecorator("id", "title")
   public static readonly primaryKey: Query.FullPrimaryKey<Card, number, string>;

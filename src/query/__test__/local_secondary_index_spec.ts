@@ -6,7 +6,7 @@ import * as Decorator from "../../decorator";
 
 import * as Query from "../index";
 
-@Decorator.Table({ name: "prod-Card-3" })
+@Decorator.Table({ tableName: "prod-Card-3" })
 class Card extends Table {
   @Decorator.FullPrimaryKey("id", "title")
   public static readonly primaryKey: Query.FullPrimaryKey<Card, number, string>;

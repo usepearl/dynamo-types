@@ -18,7 +18,7 @@ import { AttributeExists, Between,  In } from "../expressions/conditions";
 import * as Query from "../index";
 
 describe("HashPrimaryKey", () => {
-  @TableDecorator({ name: "prod-card3" })
+  @TableDecorator({ tableName: "prod-card3" })
   class Card extends Table {
     @HashPrimaryKeyDecorator("id")
     public static readonly primaryKey: Query.HashPrimaryKey<Card, number>;

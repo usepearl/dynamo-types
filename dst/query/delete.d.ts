@@ -7,4 +7,5 @@ export declare function deleteItem<T extends Table>(tableClass: ITable<T>, keys:
     [key: string]: any;
 }, options?: Partial<{
     condition: Conditions<T> | Array<Conditions<T>>;
+    relationKey?: string;
 }>): Promise<void>;

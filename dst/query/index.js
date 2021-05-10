@@ -15,6 +15,8 @@ var full_primary_key_1 = require("./full_primary_key");
 Object.defineProperty(exports, "FullPrimaryKey", { enumerable: true, get: function () { return full_primary_key_1.FullPrimaryKey; } });
 var hash_primary_key_1 = require("./hash_primary_key");
 Object.defineProperty(exports, "HashPrimaryKey", { enumerable: true, get: function () { return hash_primary_key_1.HashPrimaryKey; } });
+var single_table_key_1 = require("./single_table_key");
+Object.defineProperty(exports, "SingleTableKey", { enumerable: true, get: function () { return single_table_key_1.SingleTableKey; } });
 var global_secondary_index_1 = require("./global_secondary_index");
 Object.defineProperty(exports, "FullGlobalSecondaryIndex", { enumerable: true, get: function () { return global_secondary_index_1.FullGlobalSecondaryIndex; } });
 Object.defineProperty(exports, "HashGlobalSecondaryIndex", { enumerable: true, get: function () { return global_secondary_index_1.HashGlobalSecondaryIndex; } });
