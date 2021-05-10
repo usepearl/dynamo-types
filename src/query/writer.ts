@@ -49,7 +49,7 @@ function KeyFromRecord<T extends Table>(
       [metadata.range.name]: record.getAttribute(metadata.range.name),
     };
   } else {
-    const classKey = serializeClassKeys(this.tableClass, record.serialize(), false);
+    const classKey = serializeClassKeys(this.tableClass, record.serialize());
     return {
       [metadata.hash.name]: record.getAttribute(metadata.hash.name),
       classKey

@@ -7,4 +7,5 @@ import * as Metadata from "./metadata";
 import * as Query from "./query";
 import { Table } from "./table";
 import { SingleTable, SingleMetaTable } from './single_table';
-export { Query, Config, Codec, Decorator, Metadata, Connection, Table, SingleTable, SingleMetaTable };
+import { OneToOneRelation } from './query/relationship_key';
+export { Query, Config, Codec, Decorator, Metadata, Connection, Table, SingleTable, SingleMetaTable, OneToOneRelation };

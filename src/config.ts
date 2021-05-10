@@ -1,4 +1,5 @@
 import { Connection, DynamoDBConnection } from "./connections";
+import { RelationshipKey } from "./query/relationship_key";
 
 export default class Config {
   private static __defaultConnection: Connection; // tslint:disable-line
@@ -10,5 +11,21 @@ export default class Config {
       });
     }
     return this.__defaultConnection;
+  }
+
+  public static initializeRelationships(relationships: Array<() => RelationshipKey<any, any>[]>) {
+    for (const relationshipFunc of relationships) {
+      const relations = relationshipFunc()
+      relations.forEach(relation => {
+        if (!relation.sideOne.referenceTable.metadata.relationshipKeys.includes(relation)) {
+          relation.sideOne.referenceTable.metadata.relationshipKeys.push(relation);
+        }
+
+        if (!relation.sideTwo.referenceTable.metadata.relationshipKeys.includes(relation)) {
+          relation.sideTwo.referenceTable.metadata.relationshipKeys.push(relation);
+        }
+      })
+    }
+
   }
 }

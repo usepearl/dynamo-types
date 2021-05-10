@@ -23,10 +23,6 @@ export interface SingleTableKeyMetadata {
     readonly singleType: "HASH" | "RANGE";
     readonly isPrimaryTable: boolean;
 }
-export interface RelationshipKeyMetadata extends SingleTableKeyMetadata {
-    readonly indexName?: string;
-    readonly relationTableName: string;
-}
 export interface FullGlobalSecondaryIndexMetadata {
     readonly type: "FULL";
     readonly name: string;

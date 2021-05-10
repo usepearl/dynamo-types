@@ -17,8 +17,10 @@ export function serialize<T extends Table>(tableClass: ITable<T>, record: T, wit
   });
 
   if (isSingleTableKey(tableClass.metadata.primaryKey)) {
-    const classKey = serializeClassKeys(tableClass, record.serialize(), !!withRelationId);
+    const classKey = serializeClassKeys(tableClass, record.serialize());
     res.classKey = classKey;
+
+    console.log("WITH RELATION", withRelationId)
     if (!!withRelationId) {
       res.id = withRelationId;
     }
@@ -45,18 +47,18 @@ export function serializeUniqueKeyset<T extends Table>(tableClass: ITable<T>, re
 }
 
 
-export function serializeClassKeys<T extends Table>(tableClass: ITable<T>, record: { [key: string]: any }, forRelation: boolean): string {
+export function serializeClassKeys<T extends Table>(tableClass: ITable<T>, record: { [key: string]: any }, keyOverrides: { [name: string]: Attribute.Metadata } = {}): string {
   if (!isSingleTableKey(tableClass.metadata.primaryKey)) {
     throw new Error("Cannot serialize class keys because table is not SingleTable")
   }
 
   const keys = tableClass.metadata.primaryKey.classKeys
-    // [ tableClass.metadata.primaryKey.hash, ...tableClass.metadata.primaryKey.classKeys ] 
   
   const values = keys.map((attribute) => {
-    const value = record[attribute.name]
+    const realAttribute = keyOverrides[attribute.name] ?? attribute
+    const value = record[realAttribute.name]
     if (value === undefined) {
-      throw new Error(`Can't find ${attribute.propertyName}. Got: ${JSON.stringify(record, null, 2)}`)
+      throw new Error(`Can't find ${realAttribute.name}. Got: ${JSON.stringify(record, null, 2)}`)
     }
     
     return value.toString()

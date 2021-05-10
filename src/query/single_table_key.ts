@@ -8,7 +8,7 @@ import { ITable } from "../table";
 
 import { deleteItem } from "./delete";
 
-import { Conditions } from "./expressions/conditions";
+import { AttributeExists, AttributeNotExists, Conditions } from "./expressions/conditions";
 import { buildCondition, buildUniqueKeyUpdates, buildUpdate } from "./expressions/transformers";
 import { UpdateChanges } from "./expressions/update";
 
@@ -34,8 +34,8 @@ export class SingleTableKey<T extends SingleTable<"HASH" | "RANGE">, HashKeyType
       classKeys[key.name] = classKeys[key.propertyName]
     })
 
-    const classKey = serializeClassKeys(this.tableClass, classKeys, false);
-    const relationKey = serializeClassKeys(this.tableClass, classKeys, true);
+    const classKey = serializeClassKeys(this.tableClass, classKeys);
+    const relationKey = serializeClassKeys(this.tableClass, classKeys);
 
     return deleteItem(this.tableClass, {
       [this.metadata.hash.name]: hashKey,
@@ -59,7 +59,7 @@ export class SingleTableKey<T extends SingleTable<"HASH" | "RANGE">, HashKeyType
       classValue[key.name] = classValue[key.propertyName]
     })
 
-    const hashClassKey = serializeClassKeys(this.tableClass, classValue, false)
+    const hashClassKey = serializeClassKeys(this.tableClass, classValue)
 
     const dynamoRecord =
       await this.tableClass.metadata.connection.documentClient.get({
@@ -173,7 +173,7 @@ export class SingleTableKey<T extends SingleTable<"HASH" | "RANGE">, HashKeyType
     changes: Partial<UpdateChanges<T>>,
     options: Partial<{
       condition: Conditions<T> | Array<Conditions<T>>;
-    }> = {},
+    }> = {condition: []},
   ): Promise<void> {
     classKeys[this.metadata.hash.name] = hashKey;
     this.metadata.classKeys.forEach((key) => {
@@ -182,9 +182,16 @@ export class SingleTableKey<T extends SingleTable<"HASH" | "RANGE">, HashKeyType
       }
     })
 
-    const classKey = serializeClassKeys(this.tableClass, classKeys, false);
+    const classKey = serializeClassKeys(this.tableClass, classKeys);
     const update = buildUpdate(this.tableClass.metadata, changes);
-    const condition = buildCondition(this.tableClass.metadata, options.condition);
+
+    const conditions = options.condition === undefined ? [] : Array.isArray(options.condition) ? options.condition : [options.condition]
+    const keyCondition: Conditions<any> = {
+      [this.metadata.hash.name]: AttributeExists(),
+      classKey: AttributeExists()
+    }
+
+    const condition = buildCondition(this.tableClass.metadata, [...conditions, keyCondition]);
 
     const input = {
       Update: {
@@ -200,33 +207,16 @@ export class SingleTableKey<T extends SingleTable<"HASH" | "RANGE">, HashKeyType
       }
     }
 
-    const foundRelationships = await Promise.all(this.tableClass.metadata.relationshipKeys
-      .map((relation) => {
-        if (classKeys[relation.hash.propertyName]) {
-          return {
-            tableName: relation.relationTableName!,
-            id: classKeys[relation.hash.propertyName]
-          }
-        }
+    const relationshipPromises = await Promise.all(
+      this.tableClass.metadata.relationshipKeys.map((relation) => relation.generateUpdateInputs(this.tableClass, hashKey, classKey))
+    );
 
-        return this.tableClass.metadata.connection.documentClient.query({
-          TableName: relation.relationTableName!,
-          IndexName: relation.indexName,
-          KeyConditionExpression: `#className = :className`,
-          ExpressionAttributeNames: {
-            '#className': 'className'
-          },
-          ExpressionAttributeValues: {
-            ':className': serializeClassKeys(this.tableClass, classKeys, true)
-          },
-          AttributesToGet: ['id']
-        })
-        .promise()
-        .then((item) => {
-          return { tableName: relation.relationTableName!, id: item.Items && item.Items[0].id }
-        })
-      }))
-
+    const foundRelationships = relationshipPromises
+    .reduce((toRet: {tableName: string, id: string}[], inputs) => {
+      inputs.forEach((input) => toRet.push(input));
+      return toRet;
+    }, [])
+    
     const relationshipInputs = foundRelationships.map((relation) => {
       return {
         Update: {

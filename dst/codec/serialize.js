@@ -11,8 +11,9 @@ function serialize(tableClass, record, withRelationId) {
         }
     });
     if (table_1.isSingleTableKey(tableClass.metadata.primaryKey)) {
-        const classKey = serializeClassKeys(tableClass, record.serialize(), !!withRelationId);
+        const classKey = serializeClassKeys(tableClass, record.serialize());
         res.classKey = classKey;
+        console.log("WITH RELATION", withRelationId);
         if (!!withRelationId) {
             res.id = withRelationId;
         }
@@ -35,16 +36,17 @@ function serializeUniqueKeyset(tableClass, record, uniqueKeys) {
     return Object.values(values).join("_");
 }
 exports.serializeUniqueKeyset = serializeUniqueKeyset;
-function serializeClassKeys(tableClass, record, forRelation) {
+function serializeClassKeys(tableClass, record, keyOverrides = {}) {
     if (!table_1.isSingleTableKey(tableClass.metadata.primaryKey)) {
         throw new Error("Cannot serialize class keys because table is not SingleTable");
     }
     const keys = tableClass.metadata.primaryKey.classKeys;
-    // [ tableClass.metadata.primaryKey.hash, ...tableClass.metadata.primaryKey.classKeys ] 
     const values = keys.map((attribute) => {
-        const value = record[attribute.name];
+        var _a;
+        const realAttribute = (_a = keyOverrides[attribute.name]) !== null && _a !== void 0 ? _a : attribute;
+        const value = record[realAttribute.name];
         if (value === undefined) {
-            throw new Error(`Can't find ${attribute.propertyName}. Got: ${JSON.stringify(record, null, 2)}`);
+            throw new Error(`Can't find ${realAttribute.name}. Got: ${JSON.stringify(record, null, 2)}`);
         }
         return value.toString();
     });

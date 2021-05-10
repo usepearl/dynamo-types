@@ -8,6 +8,8 @@ import * as Metadata from "./metadata";
 import * as Query from "./query";
 import { Table } from "./table";
 import { SingleTable, SingleMetaTable } from './single_table';
+import { OneToOneRelation } from './query/relationship_key';
+
 export {
   Query,
   Config,
@@ -17,5 +19,6 @@ export {
   Connection,
   Table,
   SingleTable,
-  SingleMetaTable
+  SingleMetaTable,
+  OneToOneRelation
 };

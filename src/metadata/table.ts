@@ -3,6 +3,7 @@ import * as Indexes from "./indexes";
 
 import * as Connection from "../connections";
 import { UniqueKey } from "./unique_key";
+import { RelationshipKey } from "../query/relationship_key";
 
 // Table consists of
 // - Attributes
@@ -32,7 +33,7 @@ export interface Metadata {
    | Indexes.HashPrimaryKeyMetadata
    | Indexes.SingleTableKeyMetadata
   );
-  relationshipKeys: Indexes.RelationshipKeyMetadata[]
+  relationshipKeys: RelationshipKey<any, any>[]
   uniqueKeys: UniqueKey[];
   uniqueKeyFieldList: string[];
 }

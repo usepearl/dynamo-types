@@ -2,8 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.batchPut = exports.put = exports.convertToUniquePutInputs = void 0;
 const Codec = require("../codec");
+const conditions_1 = require("./expressions/conditions");
 const transformers_1 = require("./expressions/transformers");
 const batch_write_1 = require("./batch_write");
+const table_1 = require("../metadata/table");
 exports.convertToUniquePutInputs = (tableClass, record, filterKey) => {
     const hasUniqueKeys = tableClass.metadata.uniqueKeys.length > 0;
     if (!hasUniqueKeys) {
@@ -36,19 +38,40 @@ exports.convertToUniquePutInputs = (tableClass, record, filterKey) => {
     }
 };
 async function put(tableClass, record, options = {}) {
-    const recordInput = Object.assign({ Item: Codec.serialize(tableClass, record), TableName: tableClass.metadata.name }, transformers_1.buildCondition(tableClass.metadata, options.condition));
-    const relationshipInputs = tableClass.metadata.relationshipKeys
-        .filter(relation => record.getAttribute(relation.hash.name) !== undefined)
-        .map(relation => {
-        return Object.assign({ Item: Codec.serialize(tableClass, record, record.getAttribute(relation.hash.name)), TableName: relation.relationTableName }, transformers_1.buildCondition(tableClass.metadata, options.condition));
-    });
+    const conditions = options.condition === undefined ? [] : Array.isArray(options.condition) ? options.condition : [options.condition];
+    const keyCondition = table_1.isSingleTableKey(tableClass.metadata.primaryKey) ? {
+        [tableClass.metadata.primaryKey.hash.name]: conditions_1.AttributeNotExists(),
+        classKey: conditions_1.AttributeNotExists()
+    } : {
+        [tableClass.metadata.primaryKey.hash.name]: conditions_1.AttributeNotExists(),
+    };
+    const condition = transformers_1.buildCondition(tableClass.metadata, [...conditions, keyCondition]);
+    const recordInput = Object.assign({ Item: Codec.serialize(tableClass, record), TableName: tableClass.metadata.name }, condition);
     const inputs = exports.convertToUniquePutInputs(tableClass, record);
+    const items = [recordInput, ...inputs].map((params) => {
+        return {
+            Put: params
+        };
+    });
+    const relationshipInputs = tableClass.metadata.relationshipKeys
+        .reduce((toRet, relation) => {
+        const inputs = relation.generatePutRelationInput(tableClass, record, options);
+        inputs.forEach((input) => toRet.push(input));
+        return toRet;
+    }, []);
+    const copyInputs = tableClass.metadata.relationshipKeys
+        .reduce((toRet, relation) => {
+        const inputs = relation.generatePutCopyInput(tableClass, record, options);
+        inputs.forEach((input) => {
+            if (!toRet.find((i) => { var _a, _b; return ((_a = i.Put) === null || _a === void 0 ? void 0 : _a.TableName) === ((_b = input.Put) === null || _b === void 0 ? void 0 : _b.TableName); })) {
+                toRet.push(input);
+            }
+        });
+        return toRet;
+    }, []);
+    console.log("PUT", JSON.stringify([...items, ...copyInputs, ...relationshipInputs], null, 2));
     await tableClass.metadata.connection.documentClient.transactWrite({
-        TransactItems: [recordInput, ...relationshipInputs, ...inputs].map((params) => {
-            return {
-                Put: params
-            };
-        })
+        TransactItems: [...items, ...copyInputs, ...relationshipInputs]
     }).promise();
     return record;
 }

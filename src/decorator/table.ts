@@ -6,9 +6,10 @@ import Config from "../config";
 import { Connection } from "../connections";
 import { UniqueKey } from "../metadata/unique_key";
 import { isFullKey, isSingleTableKey } from "../metadata/table";
+import { RelationshipKey } from "../query/relationship_key";
 
 // Table Decorator
-export function Table(options: { tableName: string, connection?: Connection, uniqueKeys?: UniqueKey[], className?: string }) {
+export function Table(options: { tableName: string, connection?: Connection, uniqueKeys?: UniqueKey[], className?: string, }) {
   return (target: ITable<any>) => {
     target.metadata.connection = options.connection || Config.defaultConnection;
     target.metadata.className = options.className || target.name;

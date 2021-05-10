@@ -11,6 +11,19 @@ class Config {
         }
         return this.__defaultConnection;
     }
+    static initializeRelationships(relationships) {
+        for (const relationshipFunc of relationships) {
+            const relations = relationshipFunc();
+            relations.forEach(relation => {
+                if (!relation.sideOne.referenceTable.metadata.relationshipKeys.includes(relation)) {
+                    relation.sideOne.referenceTable.metadata.relationshipKeys.push(relation);
+                }
+                if (!relation.sideTwo.referenceTable.metadata.relationshipKeys.includes(relation)) {
+                    relation.sideTwo.referenceTable.metadata.relationshipKeys.push(relation);
+                }
+            });
+        }
+    }
 }
 exports.default = Config;
 //# sourceMappingURL=config.js.map

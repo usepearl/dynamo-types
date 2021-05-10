@@ -2,6 +2,7 @@ import * as Attribute from "./attribute";
 import * as Indexes from "./indexes";
 import * as Connection from "../connections";
 import { UniqueKey } from "./unique_key";
+import { RelationshipKey } from "../query/relationship_key";
 export declare const isFullKey: (key: Indexes.FullPrimaryKeyMetadata | Indexes.HashPrimaryKeyMetadata | Indexes.SingleTableKeyMetadata) => key is Indexes.FullPrimaryKeyMetadata;
 export declare const isSingleTableKey: (key: Indexes.FullPrimaryKeyMetadata | Indexes.HashPrimaryKeyMetadata | Indexes.SingleTableKeyMetadata) => key is Indexes.SingleTableKeyMetadata;
 export interface Metadata {
@@ -12,7 +13,7 @@ export interface Metadata {
     globalSecondaryIndexes: Array<Indexes.FullGlobalSecondaryIndexMetadata | Indexes.HashGlobalSecondaryIndexMetadata>;
     localSecondaryIndexes: Indexes.LocalSecondaryIndexMetadata[];
     primaryKey: (Indexes.FullPrimaryKeyMetadata | Indexes.HashPrimaryKeyMetadata | Indexes.SingleTableKeyMetadata);
-    relationshipKeys: Indexes.RelationshipKeyMetadata[];
+    relationshipKeys: RelationshipKey<any, any>[];
     uniqueKeys: UniqueKey[];
     uniqueKeyFieldList: string[];
 }

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SingleMetaTable = exports.SingleTable = exports.Table = exports.Connection = exports.Metadata = exports.Decorator = exports.Codec = exports.Config = exports.Query = void 0;
+exports.OneToOneRelation = exports.SingleMetaTable = exports.SingleTable = exports.Table = exports.Connection = exports.Metadata = exports.Decorator = exports.Codec = exports.Config = exports.Query = void 0;
 require("reflect-metadata");
 const Codec = require("./codec");
 exports.Codec = Codec;
@@ -19,4 +19,6 @@ Object.defineProperty(exports, "Table", { enumerable: true, get: function () { r
 const single_table_1 = require("./single_table");
 Object.defineProperty(exports, "SingleTable", { enumerable: true, get: function () { return single_table_1.SingleTable; } });
 Object.defineProperty(exports, "SingleMetaTable", { enumerable: true, get: function () { return single_table_1.SingleMetaTable; } });
+const relationship_key_1 = require("./query/relationship_key");
+Object.defineProperty(exports, "OneToOneRelation", { enumerable: true, get: function () { return relationship_key_1.OneToOneRelation; } });
 //# sourceMappingURL=index.js.map

@@ -1,10 +1,11 @@
 import { ITable, Table } from "../table";
 import * as Codec from '../codec';
-import { Conditions } from "./expressions/conditions";
+import { AttributeNotExists, Conditions } from "./expressions/conditions";
 import { buildCondition } from "./expressions/transformers";
 import { DocumentClient } from "aws-sdk/clients/dynamodb";
 import { batchWrite } from "./batch_write";
 import { UniqueKey } from "../metadata/unique_key";
+import { isSingleTableKey } from "../metadata/table";
 
 export const convertToUniquePutInputs = <T extends Table>(
   tableClass: ITable<T>,
@@ -50,33 +51,55 @@ export async function put<T extends Table>(
     condition: Conditions<T> | Array<Conditions<T>>;
   }> = {})
 {
+  const conditions = options.condition === undefined ? [] : Array.isArray(options.condition) ? options.condition : [options.condition]
+  const keyCondition: Conditions<any> = isSingleTableKey(tableClass.metadata.primaryKey) ? {
+    [tableClass.metadata.primaryKey.hash.name]: AttributeNotExists(),
+    classKey: AttributeNotExists()
+  } : {
+    [tableClass.metadata.primaryKey.hash.name]: AttributeNotExists(),
+  }
+
+  const condition = buildCondition(tableClass.metadata, [...conditions, keyCondition]);
   const recordInput = {
     Item: Codec.serialize(tableClass, record),
     TableName: tableClass.metadata.name,
-    ...buildCondition(tableClass.metadata, options.condition),
+    ...condition,
   };
 
+  const inputs = convertToUniquePutInputs(tableClass, record);
+  const items = [recordInput, ...inputs].map((params) => {
+    return {
+      Put: params
+    }
+  });
+
   const relationshipInputs = tableClass.metadata.relationshipKeys
-    .filter(relation => record.getAttribute(relation.hash.name) !== undefined)
-    .map(relation => {
-      return {
-        Item: Codec.serialize(tableClass, record, record.getAttribute(relation.hash.name)),
-        TableName: relation.relationTableName!,
-        ...buildCondition(tableClass.metadata, options.condition),
+    .reduce((toRet: DocumentClient.TransactWriteItem[], relation) => {
+      const inputs = relation.generatePutRelationInput(tableClass, record, options);
+      inputs.forEach((input) => toRet.push(input));
+      return toRet;
+    }, [])
+
+  
+
+  const copyInputs = tableClass.metadata.relationshipKeys
+  .reduce((toRet: DocumentClient.TransactWriteItem[], relation) => {
+    const inputs = relation.generatePutCopyInput(tableClass, record, options);
+    inputs.forEach((input) => {
+      if (!toRet.find((i) => i.Put?.TableName === input.Put?.TableName)) {
+        toRet.push(input)
       }
-    })
+    });
+    return toRet;
+  }, [])
+ 
+  console.log("PUT", JSON.stringify([...items, ...copyInputs, ...relationshipInputs], null , 2))
 
-    const inputs = convertToUniquePutInputs(tableClass, record);  
+  await tableClass.metadata.connection.documentClient.transactWrite({
+    TransactItems: [...items, ...copyInputs, ...relationshipInputs]
+  }).promise();
 
-    await tableClass.metadata.connection.documentClient.transactWrite({
-      TransactItems: [recordInput, ...relationshipInputs, ...inputs].map((params) => {
-        return {
-          Put: params
-        }
-      })
-    }).promise();
-
-    return record;
+  return record;
 }
 
 export async function batchPut<T extends Table>(

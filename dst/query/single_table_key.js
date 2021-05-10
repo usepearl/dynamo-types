@@ -4,6 +4,7 @@ exports.SingleTableKey = void 0;
 const Codec = require("../codec");
 const serialize_1 = require("../codec/serialize");
 const delete_1 = require("./delete");
+const conditions_1 = require("./expressions/conditions");
 const transformers_1 = require("./expressions/transformers");
 class SingleTableKey {
     constructor(tableClass, metadata) {
@@ -18,8 +19,8 @@ class SingleTableKey {
             }
             classKeys[key.name] = classKeys[key.propertyName];
         });
-        const classKey = serialize_1.serializeClassKeys(this.tableClass, classKeys, false);
-        const relationKey = serialize_1.serializeClassKeys(this.tableClass, classKeys, true);
+        const classKey = serialize_1.serializeClassKeys(this.tableClass, classKeys);
+        const relationKey = serialize_1.serializeClassKeys(this.tableClass, classKeys);
         return delete_1.deleteItem(this.tableClass, {
             [this.metadata.hash.name]: hashKey,
             classKey
@@ -35,7 +36,7 @@ class SingleTableKey {
             }
             classValue[key.name] = classValue[key.propertyName];
         });
-        const hashClassKey = serialize_1.serializeClassKeys(this.tableClass, classValue, false);
+        const hashClassKey = serialize_1.serializeClassKeys(this.tableClass, classValue);
         const dynamoRecord = await this.tableClass.metadata.connection.documentClient.get({
             TableName: this.tableClass.metadata.name,
             Key: {
@@ -110,16 +111,21 @@ class SingleTableKey {
             consumedCapacity: result.ConsumedCapacity,
         };
     }
-    async update(hashKey, classKeys = {}, changes, options = {}) {
+    async update(hashKey, classKeys = {}, changes, options = { condition: [] }) {
         classKeys[this.metadata.hash.name] = hashKey;
         this.metadata.classKeys.forEach((key) => {
             if (!classKeys[key.propertyName]) {
                 throw new Error(`Cannot delete because missing value for ${key.propertyName}`);
             }
         });
-        const classKey = serialize_1.serializeClassKeys(this.tableClass, classKeys, false);
+        const classKey = serialize_1.serializeClassKeys(this.tableClass, classKeys);
         const update = transformers_1.buildUpdate(this.tableClass.metadata, changes);
-        const condition = transformers_1.buildCondition(this.tableClass.metadata, options.condition);
+        const conditions = options.condition === undefined ? [] : Array.isArray(options.condition) ? options.condition : [options.condition];
+        const keyCondition = {
+            [this.metadata.hash.name]: conditions_1.AttributeExists(),
+            classKey: conditions_1.AttributeExists()
+        };
+        const condition = transformers_1.buildCondition(this.tableClass.metadata, [...conditions, keyCondition]);
         const input = {
             Update: {
                 TableName: this.tableClass.name,
@@ -133,31 +139,12 @@ class SingleTableKey {
                 ExpressionAttributeValues: Object.assign(Object.assign({}, update.ExpressionAttributeValues), condition.ExpressionAttributeValues),
             }
         };
-        const foundRelationships = await Promise.all(this.tableClass.metadata.relationshipKeys
-            .map((relation) => {
-            if (classKeys[relation.hash.propertyName]) {
-                return {
-                    tableName: relation.relationTableName,
-                    id: classKeys[relation.hash.propertyName]
-                };
-            }
-            return this.tableClass.metadata.connection.documentClient.query({
-                TableName: relation.relationTableName,
-                IndexName: relation.indexName,
-                KeyConditionExpression: `#className = :className`,
-                ExpressionAttributeNames: {
-                    '#className': 'className'
-                },
-                ExpressionAttributeValues: {
-                    ':className': serialize_1.serializeClassKeys(this.tableClass, classKeys, true)
-                },
-                AttributesToGet: ['id']
-            })
-                .promise()
-                .then((item) => {
-                return { tableName: relation.relationTableName, id: item.Items && item.Items[0].id };
-            });
-        }));
+        const relationshipPromises = await Promise.all(this.tableClass.metadata.relationshipKeys.map((relation) => relation.generateUpdateInputs(this.tableClass, hashKey, classKey)));
+        const foundRelationships = relationshipPromises
+            .reduce((toRet, inputs) => {
+            inputs.forEach((input) => toRet.push(input));
+            return toRet;
+        }, []);
         const relationshipInputs = foundRelationships.map((relation) => {
             return {
                 Update: {

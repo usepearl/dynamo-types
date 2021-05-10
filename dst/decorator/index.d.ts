@@ -5,5 +5,5 @@ export { FullGlobalSecondaryIndex, HashGlobalSecondaryIndex, } from "./global_se
 export { LocalSecondaryIndex } from "./local_secondary_index";
 export { FullPrimaryKey } from "./full_primary_key";
 export { HashPrimaryKey } from "./hash_primary_key";
-export { SingleTableKey, SingleTableRelation } from './single_table_key';
+export { SingleTableKey } from './single_table_key';
 export { Writer } from "./writer";

@@ -50,47 +50,28 @@ export async function deleteItem<T extends Table>(
   }> = {},
 ) {
 
-  const recordInput: DocumentClient.DeleteItemInput = {
-    TableName: tableClass.metadata.name,
-    Key: keys,
-    ...buildCondition(tableClass.metadata, options.condition),
-  }
-
-
-  const foundRelationships = await Promise.all(tableClass.metadata.relationshipKeys
-    .map((relation) => {
-      return tableClass.metadata.connection.documentClient.get({
-        Key: keys,
-        TableName: tableClass.metadata.name,
-        ProjectionExpression: relation.hash.name,
-      })
-      .promise()
-      .then((item) => {
-        return { tableName: relation.relationTableName, id: item.Item && item.Item[relation.hash.name] }
-      })
-    }))
-
-  const relationshipInputs  = foundRelationships
-  .filter(relation => !!relation.id)
-  .map((relation): DocumentClient.DeleteItemInput => {
-    return {
-      TableName: relation.tableName,
-      Key: {
-        id: relation.id,
-        classKey: options.relationKey!
-      },
+  const recordInput: DocumentClient.TransactWriteItem = {
+      Delete: {
+      TableName: tableClass.metadata.name,
+      Key: keys,
       ...buildCondition(tableClass.metadata, options.condition),
     }
-  })
+  }
+
+  const relationshipPromises = await Promise.all(
+    tableClass.metadata.relationshipKeys.map((relation) => relation.generateDeleteInputs(tableClass, keys, options.relationKey!, options))
+  );
+
+  const relationshipInputs = relationshipPromises
+  .reduce((toRet: DocumentClient.TransactWriteItem[], inputs) => {
+    inputs.forEach((input) => toRet.push(input));
+    return toRet;
+  }, [])
 
   const hasUniqueKeys = tableClass.metadata.uniqueKeys.length > 0;
   if (!hasUniqueKeys) {
     await tableClass.metadata.connection.documentClient.transactWrite({
-      TransactItems: [recordInput, ...relationshipInputs].map((params) => {
-        return {
-          Delete: params
-        }
-      })
+      TransactItems: [recordInput, ...relationshipInputs]
     }).promise();
   } else {
     const item = await tableClass.metadata.connection.documentClient.get({
@@ -104,14 +85,16 @@ export async function deleteItem<T extends Table>(
     }
 
     const record = Codec.deserialize(tableClass, item.Item!, tableClass.metadata.uniqueKeyFieldList)
-    const keyInputs = convertToUniqueDeleteInputs(tableClass, record)
+    const keyInputs = convertToUniqueDeleteInputs(tableClass, record).map((params) => {
+      return {
+        Delete: params
+      }
+    })
+
+    console.log("DELETING", JSON.stringify([recordInput, ...relationshipInputs, ...keyInputs], null, 2))
 
     await tableClass.metadata.connection.documentClient.transactWrite({
-      TransactItems: [recordInput, ...relationshipInputs, ...keyInputs].map((params) => {
-        return {
-          Delete: params
-        }
-      })
+      TransactItems: [recordInput, ...relationshipInputs, ...keyInputs]
     }).promise();
   }
 }

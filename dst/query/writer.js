@@ -34,7 +34,7 @@ function KeyFromRecord(record, metadata) {
         };
     }
     else {
-        const classKey = serialize_1.serializeClassKeys(this.tableClass, record.serialize(), false);
+        const classKey = serialize_1.serializeClassKeys(this.tableClass, record.serialize());
         return {
             [metadata.hash.name]: record.getAttribute(metadata.hash.name),
             classKey
